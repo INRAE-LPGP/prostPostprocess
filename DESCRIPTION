@@ -1,0 +1,40 @@
+Package: prostPostprocess
+Type: Package
+Title: Provide utility fonction to postprocess prost! output
+Version: 0.1.0
+Author: Léo Milhade
+Maintainer: Léo Milhade <leo.milhade@irisa.fr>
+Description: prostPostprocess provides a collection of function to help process
+    data from prost! (https://www.nature.com/articles/s41598-019-40361-8) in 
+    order to do a differential analysis.
+    The process consists in three steps :
+    - Load and filter read counts and metadata
+    - Create a DESeqDataset compatible with DESeq2
+    - Plot the results of a differential analysis with DESeq
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+Depends:
+  R (>= 3.6)
+Imports:
+  DESeq2,
+  dplyr,
+  factoextra,
+  FactoMineR,
+  ggplot2,
+  ggrepel,
+  grDevices,
+  magrittr,
+  pheatmap,
+  RColorBrewer,
+  readr,
+  rlang,
+  scales,
+  stats,
+  stringr,
+  SummarizedExperiment,
+  tibble,
+  tidyr,
+  knitr
+RoxygenNote: 7.1.1
+VignetteBuilder: knitr
