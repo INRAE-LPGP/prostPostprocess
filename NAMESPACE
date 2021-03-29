@@ -2,6 +2,7 @@
 
 export("%>%")
 export(boxplot_mir)
+export(boxplot_one_mir)
 export(dds_from_compressed_by_annotation)
 export(gg_color)
 export(load_metadata)

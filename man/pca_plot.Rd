@@ -8,6 +8,7 @@ pca_plot(
   deseq_transformation,
   condition_list = "conditions",
   title = "Project",
+  add_theme = T,
   draw_arrows = T,
   n_arrows = 10,
   draw_ellipses = T,
@@ -20,6 +21,8 @@ pca_plot(
 \item{condition_list}{a string vector describing the different conditions}
 
 \item{title}{title to add to the plot, default : "Project"}
+
+\item{add_theme}{if TRUE then a theme is added to the figure, labels, title, colors...}
 
 \item{draw_arrows}{if TRUE then miR contribution arrows are added to the figure}
 

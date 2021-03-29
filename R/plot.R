@@ -93,6 +93,7 @@ sample_to_sample_heatmap <- function(dds, deseq_transformation, title = "Project
 #' @param deseq_transformation DESeq transformation (e.g. normTransform(dds))
 #' @param condition_list a string vector describing the different conditions
 #' @param title title to add to the plot, default : "Project"
+#' @param add_theme if TRUE then a theme is added to the figure, labels, title, colors...
 #' @param draw_arrows if TRUE then miR contribution arrows are added to the figure
 #' @param n_arrows number of arrow to add to the figure, up to 10
 #' @param draw_ellipses if TRUE then ellipses around conditions are added to the figure
@@ -103,6 +104,7 @@ sample_to_sample_heatmap <- function(dds, deseq_transformation, title = "Project
 #' @importFrom rlang .data
 #' @export
 pca_plot <- function(deseq_transformation, condition_list = "conditions", title = "Project",
+                     add_theme = T,
                      draw_arrows = T,
                      n_arrows = 10,
                      draw_ellipses = T,
@@ -172,6 +174,9 @@ pca_plot <- function(deseq_transformation, condition_list = "conditions", title 
     base_plot <- ggplot2::ggplot(data = pcatab, ggplot2::aes_string(label="sample_ID", x="Dim.1", y="Dim.2",
                                                            colour=color_condition, shape = shape_condition))
   }
+  if(add_theme) {
+    base_plot <- base_plot + pca_theme
+  }
   if(draw_arrows) {
     base_plot <- base_plot + pcacontrib_arrows[1:(2*n_arrows)]
   }
@@ -185,14 +190,13 @@ pca_plot <- function(deseq_transformation, condition_list = "conditions", title 
   }
 
   base_plot +
-    ggplot2::geom_point(size=2, mapping = ggplot2::aes_string()) +
-    pca_theme
+    ggplot2::geom_point(size=2)
 }
 
 #' Boxplot of individual miRNA count compared by the first condition
 #'
 #' @param dds DESeq dataset
-#' @param mir_of_interest List of mir to plot, ideally 25 or lesss
+#' @param mir_of_interest List of mir to plot, ideally 25 or less
 #' @param condition_list a string vector describing the different conditions
 #' @param title title to add to the plot, default : "Project"
 #' @param y_label string to add as a label on the y axis
@@ -219,4 +223,39 @@ boxplot_mir <- function(dds, mir_of_interest,
     ggplot2::facet_wrap("omy_miRNA", scales = "free") +
     ggplot2::labs(y = y_label) +
     ggplot2::ggtitle(paste("Individual miRNA count by condition - ", title, sep =""))
+}
+
+#' Boxplot of individual miRNA count compared by the first condition
+#'
+#' @param dds DESeq dataset
+#' @param mir name of a single mir to plot (eg : "omy-miR-375-3p")
+#' @param condition_list a string vector describing the different conditions
+#' @param title title to add to the plot, default is the mir name
+#' @param y_label string to add as a label on the y axis
+#' @export
+boxplot_one_mir <- function(dds, mir,
+                            title = NA,
+                            condition_list = "conditions",
+                            y_label = "normalised counts - log scale"){
+  if (is.na(title)) {
+    title <- mir
+  }
+
+  dds %>%
+    SummarizedExperiment::assay() %>%
+    tidyr::as_tibble(rownames = "omy_miRNA") %>%
+    dplyr::filter(.data$omy_miRNA == mir) %>%
+    tidyr::pivot_longer(-.data$omy_miRNA, names_to = "sample_ID", values_to = "count") %>%
+    dplyr::left_join(
+      dds %>%
+        SummarizedExperiment::colData() %>%
+        tidyr::as_tibble() %>%
+        dplyr::select(dplyr::all_of(c("sample_ID", condition_list))),
+      by = "sample_ID"
+    ) %>%
+    ggplot2::ggplot(ggplot2::aes_string(x = condition_list[1], y = "count", color = condition_list[1])) +
+    ggplot2::geom_boxplot(outlier.shape = NA) +
+    ggplot2::geom_jitter() +
+    ggplot2::labs(y = y_label) +
+    ggplot2::ggtitle(title)
 }
