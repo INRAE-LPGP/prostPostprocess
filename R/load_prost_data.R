@@ -17,7 +17,7 @@ library(tidyr)
 #' @export
 load_metadata <- function(path, condition_list = "condition") {
   readr::read_csv(path) %>%
-    dplyr::mutate(sample_ID = stringr::str_remove(base::basename(path), "_cutadapt.fastq.gz*")) %>%
+    dplyr::mutate(sample_ID = stringr::str_remove(base::basename(path), "_(cutadapt|final_trimming).fastq.gz*")) %>%
     tidyr::separate(.data$conditions, condition_list, sep = "-", remove = F)
 }
 
@@ -104,7 +104,7 @@ raw_read_count_per_sample <- function(compressed_by_annotation) {
     dplyr::group_by(.data$sample_ID) %>%
     dplyr::summarise(dplyr::across(dplyr::everything(), sum)) %>%
     dplyr::arrange(.data$total_count) %>%
-    dplyr::mutate(sample_ID = stringr::str_split(.data$sample_ID, "_", simplify = T)[,1])
+    dplyr::mutate(sample_ID = stringr::str_split(.data$sample_ID, "_(final|cut)", simplify = T)[,1])
 }
 
 #' List the miRNAs counted in every condition
@@ -181,7 +181,9 @@ subset_samples_sample_info <- function(sample_info, sample_list) {
 #' @export
 subset_samples_compressed_by_annotation <- function(compressed_by_annotation, sample_list) {
   compressed_by_annotation %>%
-    dplyr::select(!where(is.numeric) | dplyr::matches(paste(sample_list, "_cutadapt", sep = "")))
+    dplyr::select(!where(is.numeric) | 
+                    dplyr::matches(paste0(sample_list, "_cutadapt")) | 
+                    dplyr::matches(paste0(sample_list, "_final_trimming")))
 }
 
 #' Subset the compressed_by_annotation tibble to keep only mir with a minimum rpm
@@ -204,7 +206,10 @@ select_mir_compressed_by_annotation <- function(compressed_by_annotation, sample
     dplyr::pull(.data$tot) %>% min
 
   mir_to_keep <- compressed_by_annotation %>%
-    dplyr::select("omy_miRNA", paste(sample_info$sample_ID, "cutadapt", sep = "_")) %>%
+    dplyr::select("omy_miRNA", 
+                  dplyr::matches(paste(sample_info$sample_ID, "cutadapt", sep = "_")), 
+                  dplyr::matches(paste(sample_info$sample_ID, "final_trimming", sep = "_"))
+                  ) %>%
     tidyr::pivot_longer(-.data$omy_miRNA) %>%
     dplyr::group_by(.data$name) %>%
     dplyr::mutate(rpm = .data$value/sum(.data$value)*1e6) %>%
@@ -246,7 +251,9 @@ load_prost_compressed_by_genomic_location_miRNA_only <- function(path) {
 #' @export
 mir_locations <- function(compressed_by_genomic_location, sample_info, mir_list) {
   compressed_by_genomic_location %>%
-    dplyr::select("omy_miRNA", "Loc_idx","Locations", "CIGARs_5pto3p", paste(sample_info$sample_ID, "cutadapt", sep = "_")) %>%
+    dplyr::select("omy_miRNA", "Loc_idx","Locations", "CIGARs_5pto3p",
+                  dplyr::matches(paste(sample_info$sample_ID, "cutadapt", sep = "_")), 
+                  dplyr::matches(paste(sample_info$sample_ID, "final_trimming", sep = "_"))) %>%
     dplyr::filter(.data$omy_miRNA %in% mir_list) %>%
     tidyr::pivot_longer(where(is.numeric)) %>%
     dplyr::group_by(.data$Loc_idx, .data$Locations, .data$CIGARs_5pto3p, .data$omy_miRNA) %>%
