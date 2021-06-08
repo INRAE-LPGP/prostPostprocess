@@ -2,19 +2,19 @@
 % Please edit documentation in R/differential_expression.R
 \name{dds_from_compressed_by_annotation}
 \alias{dds_from_compressed_by_annotation}
-\title{Convert the compressed_by_annotation tibble into a DESeq dataset}
+\title{Convert the reads tibble into a DESeq dataset}
 \usage{
 dds_from_compressed_by_annotation(
-  compressed_by_annotation,
+  reads,
   sample_info,
   condition_list = "conditions",
   ds_formula = ~conditions
 )
 }
 \arguments{
-\item{compressed_by_annotation}{compressed_by_annotation tibble}
+\item{reads}{reads tibble}
 
-\item{sample_info}{sample info tibble with a condition column}
+\item{sample_info}{sample info tibble with a conditions column}
 
 \item{condition_list}{a string vector describing the different conditions}
 
@@ -24,5 +24,5 @@ dds_from_compressed_by_annotation(
 DESeq dataset
 }
 \description{
-Convert the compressed_by_annotation tibble into a DESeq dataset
+Convert the reads tibble into a DESeq dataset
 }
