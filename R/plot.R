@@ -259,3 +259,136 @@ boxplot_one_mir <- function(dds, mir,
     ggplot2::labs(y = y_label) +
     ggplot2::ggtitle(title)
 }
+
+#' Barplot describing resampling analysis, for each miR found differential at least one time the number of time it was found differential
+#'
+#' @param reference_analysis tibble from compute_resampling function
+#' @param resampling_results analysis whit every biosamples
+#' @param n_resample the number of resampling to analyse
+#' @param threshold_padj
+#' @param threshold_lfc
+#' @param title
+#'
+#' @importFrom rlang .data
+#' @export
+resampling_barplot <- function(reference_analysis, resampling_results, n_resample = 50, 
+                               threshold_padj = 0.05, threshold_lfc = 0.58,
+                               title = "") {
+  resampling_results %>% 
+    dplyr::mutate(condition = purrr::map(.data$analysis, 
+                                         function(x) {x %>% 
+                                           dplyr::filter(padj < threshold_padj) %>% 
+                                           dplyr::filter(abs(log2FoldChange) > threshold_lfc) %>%
+                                           dplyr::select(omy_miRNA, padj)})) %>%
+    dplyr::select(.data$condition) %>% 
+    dplyr::mutate(id = row_number()) %>% 
+    tidyr::unnest() %>% 
+    tidyr::pivot_wider(names_from = .data$omy_miRNA, values_from = .data$padj) %>%
+    dplyr::mutate(id = 0) %>%
+    dplyr::group_by(.data$id) %>%
+    dplyr::summarise_all(list(total = ~ sum(!is.na(.x))/n_resample*100, pval_mean = ~ mean(.x, na.rm = T))) %>%
+    dplyr::select(-.data$id) %>%
+    tidyr::pivot_longer(dplyr::everything()) %>%
+    tidyr::extract(.data$name, into = c("omy_miRNA", "metric"), regex = "(.*p)_(.*)") %>%
+    tidyr::pivot_wider(names_from = .data$metric, values_from = .data$value) %>%
+    dplyr::left_join(reference_analysis %>% dplyr::filter(.data$padj < threshold_padj) %>% 
+                       dplyr::select(.data$omy_miRNA) %>% dplyr::mutate(in_ref = T)) %>% 
+    dplyr::mutate(in_ref = dplyr::if_else(is.na(.data$in_ref), "False", "True")) %>%
+    dplyr::arrange(.data$total) %>% 
+    dplyr::mutate(omy_miRNA = factor(.data$omy_miRNA, levels = .data$omy_miRNA)) %>%
+    ggplot2::ggplot() + 
+    ggplot2::geom_bar(ggplot2::aes_string(x = "omy_miRNA", y = "total", fill = "in_ref"), stat = "identity") + 
+    ggplot2::labs(fill = "Differential when\nconsidering\nevery samples", y = "Differential in resampling (%)") + 
+    ggplot2::coord_flip() + 
+    ggplot2::scale_fill_manual(values = c("True" = "#F8766D", "False" = "grey")) + 
+    ggplot2::ggtitle(title) + 
+    ggplot2::scale_y_continuous(limits = c(0,100))
+}
+
+#' Heatmap describing resampling analysis
+#'
+#' @param sample_info sample_info tibble
+#' @param resampling_results analysis whit every biosamples
+#' @param subset_size number of sample for each condition in a resampling
+#' @param threshold_padj
+#' @param threshold_lfc
+#' @param title
+#' @param condition_name condition used to facet the heatmap
+#'
+#' @importFrom rlang .data
+#' @export
+resampling_heatmap <- function(sample_info, resampling_results, subset_size = 4, 
+                               threshold_padj = 0.05, threshold_lfc = 0.58,
+                               title = "", condition_name = "conditions") {
+  resampling_results %>% 
+    dplyr::mutate(condition = purrr::map(.data$analysis, 
+                                         function(x) {x %>% 
+                                             dplyr::filter(padj < threshold_padj) %>% 
+                                             dplyr::filter(log2FoldChange < threshold_lfc) %>%
+                                             dplyr::select(omy_miRNA, padj)})) %>%
+    dplyr::select(.data$sample_list, .data$condition) %>% 
+    tidyr::unnest(.data$sample_list) %>%
+    dplyr::group_by(.data$sample_list) %>% dplyr::mutate(max_sample = dplyr::n()) %>% 
+    tidyr::unnest(.data$condition) %>%
+    dplyr::group_by(.data$sample_list, .data$omy_miRNA) %>%
+    dplyr::summarise(tot = n(), max_sample = .data$max_sample[1]) %>%
+    dplyr::group_by(.data$omy_miRNA) %>% 
+    dplyr::mutate(tot_miRNA = sum(.data$tot)/(2*subset_size)) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::arrange(.data$tot_miRNA) %>%
+    dplyr::mutate(omy_miRNA = factor(.data$omy_miRNA, levels = unique(.data$omy_miRNA))) %>%
+    dplyr::left_join(sample_info %>% select("sample_ID", condition_name), by = c("sample_list" = "sample_ID")) %>%
+    ggplot2::ggplot() + 
+    ggplot2::geom_raster(ggplot2::aes(x = sample_list, y = omy_miRNA, fill = tot/max_sample*100)) + 
+    ggplot2::labs(x = "Biosample", fill = "Portion of analysis\nincluding a biosample\nwhere a miRNA is found\ndifferentially expressed (%)") +
+    ggplot2::scale_fill_gradient2(limits = c(0, 100)) + 
+    ggplot2::theme(panel.grid = ggplot2::element_blank()) + 
+    ggplot2::ggtitle(title) + 
+    ggplot2::facet_wrap(condition_name, scales = "free_x")
+}
+
+
+#' Plot level of expression in every organ of omy miRNA 
+#'
+#' @param omy_miRNA list of miRNA patterns that will be interpreted as a regex
+#' @param plot_title title of the plot
+#' @param path_MiRNAOrigin data path of a MiRNAOrigin askomics table
+#' @param path_MiRNA data path of a MiRNA askomics table
+#' @param path_Organ data path of a Organ askomics table
+#'
+#' @importFrom rlang .data
+#' @export
+plot_mir_origin_from_juanchich_data <- function(omy_miRNA, plot_title, 
+                                                path_MiRNAOrigin = "~/Documents/phenomir/askomics/datatables/MiRNAOrigin.csv",
+                                                path_MiRNA = "~/Documents/phenomir/askomics/datatables/MiRNA.csv",
+                                                path_Organ = "~/Documents/phenomir/askomics/datatables/Organ.csv") {
+  data <- readr::read_csv(path_MiRNAOrigin, 
+                          col_types = readr::cols(
+                            MiRNAOrigin = readr::col_double(),
+                            `referenceLevelOf@MiRNA` = readr::col_character(),
+                            referenceLevel = readr::col_double(),
+                            `referenceLevelFrom@Organ` = readr::col_character())) %>% 
+    dplyr::left_join(readr::read_csv(path_MiRNA, 
+                                     col_types = readr::cols(
+                                       MiRNA = readr::col_character(),
+                                       sequence = readr::col_character(),
+                                       miRNAName = readr::col_character())), 
+                     by = c("referenceLevelOf@MiRNA" = "MiRNA")) %>% 
+    dplyr::left_join(readr::read_csv(path_Organ, 
+                                     col_types = readr::cols(
+                                       Organ = readr::col_character(),
+                                       `rdfs:label` = readr::col_character())), 
+                     by = c("referenceLevelFrom@Organ" = "Organ")) %>% 
+    dplyr::mutate(organ = .data$`rdfs:label`) %>% 
+    dplyr::filter(stringr::str_detect(.data$miRNAName, omy_miRNA))
+  if(nrow(data) == 0) {
+    ggplot2::ggplot() + 
+      ggplot2::theme_void() + 
+      ggplot2::geom_text(ggplot2::aes(x = 0, y = 0, label= paste0(plot_title,"\nNo data")))
+  } else {
+    ggplot2::ggplot(data) + 
+      ggplot2::geom_bar(ggplot2::aes(x = organ, y = referenceLevel), stat = "identity") +
+      ggplot2::facet_wrap("miRNAName", scales = "free", ncol = 2) + ggplot2::coord_flip() + 
+      ggplot2::ggtitle(plot_title)
+  }
+}
