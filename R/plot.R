@@ -149,6 +149,7 @@ pca_plot <- function(deseq_transformation, condition_list = "conditions", title 
 
   ellipse_points <- pcatab %>%
     dplyr::select(condition_list[1], "Dim.1", "Dim.2") %>%
+    dplyr::mutate(dplyr::across(where(is.character), as.factor)) %>%
     as.data.frame() %>%
     FactoMineR::coord.ellipse(bary = T) %>%
     "$"("res")
@@ -296,6 +297,7 @@ resampling_barplot <- function(reference_analysis, resampling_results, n_resampl
     dplyr::mutate(in_ref = dplyr::if_else(is.na(.data$in_ref), "False", "True")) %>%
     dplyr::arrange(.data$total) %>% 
     dplyr::mutate(omy_miRNA = factor(.data$omy_miRNA, levels = .data$omy_miRNA)) %>%
+    dplyr::filter(.data$total >= 5) %>%
     ggplot2::ggplot() + 
     ggplot2::geom_bar(ggplot2::aes_string(x = "omy_miRNA", y = "total", fill = "in_ref"), stat = "identity") + 
     ggplot2::labs(fill = "Differential when\nconsidering\nevery samples", y = "Differential in resampling (%)") + 
@@ -324,7 +326,7 @@ resampling_heatmap <- function(sample_info, resampling_results, subset_size = 4,
     dplyr::mutate(condition = purrr::map(.data$analysis, 
                                          function(x) {x %>% 
                                              dplyr::filter(padj < threshold_padj) %>% 
-                                             dplyr::filter(log2FoldChange < threshold_lfc) %>%
+                                             dplyr::filter(log2FoldChange > threshold_lfc) %>%
                                              dplyr::select(omy_miRNA, padj)})) %>%
     dplyr::select(.data$sample_list, .data$condition) %>% 
     tidyr::unnest(.data$sample_list) %>%
@@ -391,4 +393,39 @@ plot_mir_origin_from_juanchich_data <- function(omy_miRNA, plot_title,
       ggplot2::facet_wrap("miRNAName", scales = "free", ncol = 2) + ggplot2::coord_flip() + 
       ggplot2::ggtitle(plot_title)
   }
+}
+
+plot_mir_origin_heatmap_from_juanchich_data <- function(omy_miRNA,
+                                                        path_MiRNAOrigin = "~/Documents/phenomir/askomics/datatables/MiRNAOrigin.csv",
+                                                        path_MiRNA = "~/Documents/phenomir/askomics/datatables/MiRNA.csv",
+                                                        path_Organ = "~/Documents/phenomir/askomics/datatables/Organ.csv") {
+  data <- readr::read_csv(path_MiRNAOrigin, 
+                          col_types = readr::cols(
+                            MiRNAOrigin = readr::col_double(),
+                            `referenceLevelOf@MiRNA` = readr::col_character(),
+                            referenceLevel = readr::col_double(),
+                            `referenceLevelFrom@Organ` = readr::col_character())) %>% 
+    dplyr::left_join(readr::read_csv(path_MiRNA, 
+                                     col_types = readr::cols(
+                                       MiRNA = readr::col_character(),
+                                       sequence = readr::col_character(),
+                                       miRNAName = readr::col_character())), 
+                     by = c("referenceLevelOf@MiRNA" = "MiRNA")) %>% 
+    dplyr::left_join(readr::read_csv(path_Organ, 
+                                     col_types = readr::cols(
+                                       Organ = readr::col_character(),
+                                       `rdfs:label` = readr::col_character())), 
+                     by = c("referenceLevelFrom@Organ" = "Organ")) %>% 
+    dplyr::select(.data$`rdfs:label`, miRNAName, referenceLevel) %>%
+    dplyr::mutate(organ = .data$`rdfs:label`) %>% ungroup %>%
+    dplyr::filter(.data$miRNAName %in% omy_miRNA) %>%
+    dplyr::group_by(miRNAName) %>%
+    dplyr::mutate(normLevel = 100*referenceLevel/sum(referenceLevel)) %>% 
+    dplyr::select(organ, miRNAName, normLevel) %>% 
+    tidyr::pivot_wider(names_from = miRNAName, values_from = normLevel)  
+  
+  mat <- as.matrix(select(data,-organ))
+  rownames(mat) <- data$organ
+  
+  pheatmap::pheatmap(mat)
 }
