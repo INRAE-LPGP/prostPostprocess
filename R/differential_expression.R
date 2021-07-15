@@ -60,7 +60,7 @@ compute_all_resampling_combinaisons <- function(sample_info, condition_name = "c
                                                                      subset_size)) %>% 
                                                         t %>% tidyr::as_tibble(.name_repair = "universal")) %>%
     tidyr::nest() %>% 
-    dplyr::mutate(data = purrr::map(data, function(x) {select(x, where(~ !all(is.na(.x))))})) %>%
+    dplyr::mutate(data = purrr::map(.data$data, function(x) {dplyr::select(x, where(~ !all(is.na(.x))))})) %>%
     tibble::deframe()
 }
 

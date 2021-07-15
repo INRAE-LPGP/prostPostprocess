@@ -282,7 +282,7 @@ resampling_barplot <- function(reference_analysis, resampling_results, n_resampl
                                            dplyr::filter(abs(log2FoldChange) > threshold_lfc) %>%
                                            dplyr::select(omy_miRNA, padj)})) %>%
     dplyr::select(.data$condition) %>% 
-    dplyr::mutate(id = row_number()) %>% 
+    dplyr::mutate(id = dplyr::row_number()) %>% 
     tidyr::unnest() %>% 
     tidyr::pivot_wider(names_from = .data$omy_miRNA, values_from = .data$padj) %>%
     dplyr::mutate(id = 0) %>%
@@ -333,13 +333,13 @@ resampling_heatmap <- function(sample_info, resampling_results, subset_size = 4,
     dplyr::group_by(.data$sample_list) %>% dplyr::mutate(max_sample = dplyr::n()) %>% 
     tidyr::unnest(.data$condition) %>%
     dplyr::group_by(.data$sample_list, .data$omy_miRNA) %>%
-    dplyr::summarise(tot = n(), max_sample = .data$max_sample[1]) %>%
+    dplyr::summarise(tot = dplyr::n(), max_sample = .data$max_sample[1]) %>%
     dplyr::group_by(.data$omy_miRNA) %>% 
     dplyr::mutate(tot_miRNA = sum(.data$tot)/(2*subset_size)) %>% 
     dplyr::ungroup() %>% 
     dplyr::arrange(.data$tot_miRNA) %>%
     dplyr::mutate(omy_miRNA = factor(.data$omy_miRNA, levels = unique(.data$omy_miRNA))) %>%
-    dplyr::left_join(sample_info %>% select("sample_ID", condition_name), by = c("sample_list" = "sample_ID")) %>%
+    dplyr::left_join(sample_info %>% dplyr::select("sample_ID", condition_name), by = c("sample_list" = "sample_ID")) %>%
     ggplot2::ggplot() + 
     ggplot2::geom_raster(ggplot2::aes(x = sample_list, y = omy_miRNA, fill = tot/max_sample*100)) + 
     ggplot2::labs(x = "Biosample", fill = "Portion of analysis\nincluding a biosample\nwhere a miRNA is found\ndifferentially expressed (%)") +
@@ -389,43 +389,8 @@ plot_mir_origin_from_juanchich_data <- function(omy_miRNA, plot_title,
       ggplot2::geom_text(ggplot2::aes(x = 0, y = 0, label= paste0(plot_title,"\nNo data")))
   } else {
     ggplot2::ggplot(data) + 
-      ggplot2::geom_bar(ggplot2::aes(x = organ, y = referenceLevel), stat = "identity") +
+      ggplot2::geom_bar(ggplot2::aes_string(x = "organ", y = "referenceLevel"), stat = "identity") +
       ggplot2::facet_wrap("miRNAName", scales = "free", ncol = 2) + ggplot2::coord_flip() + 
       ggplot2::ggtitle(plot_title)
   }
-}
-
-plot_mir_origin_heatmap_from_juanchich_data <- function(omy_miRNA,
-                                                        path_MiRNAOrigin = "~/Documents/phenomir/askomics/datatables/MiRNAOrigin.csv",
-                                                        path_MiRNA = "~/Documents/phenomir/askomics/datatables/MiRNA.csv",
-                                                        path_Organ = "~/Documents/phenomir/askomics/datatables/Organ.csv") {
-  data <- readr::read_csv(path_MiRNAOrigin, 
-                          col_types = readr::cols(
-                            MiRNAOrigin = readr::col_double(),
-                            `referenceLevelOf@MiRNA` = readr::col_character(),
-                            referenceLevel = readr::col_double(),
-                            `referenceLevelFrom@Organ` = readr::col_character())) %>% 
-    dplyr::left_join(readr::read_csv(path_MiRNA, 
-                                     col_types = readr::cols(
-                                       MiRNA = readr::col_character(),
-                                       sequence = readr::col_character(),
-                                       miRNAName = readr::col_character())), 
-                     by = c("referenceLevelOf@MiRNA" = "MiRNA")) %>% 
-    dplyr::left_join(readr::read_csv(path_Organ, 
-                                     col_types = readr::cols(
-                                       Organ = readr::col_character(),
-                                       `rdfs:label` = readr::col_character())), 
-                     by = c("referenceLevelFrom@Organ" = "Organ")) %>% 
-    dplyr::select(.data$`rdfs:label`, miRNAName, referenceLevel) %>%
-    dplyr::mutate(organ = .data$`rdfs:label`) %>% ungroup %>%
-    dplyr::filter(.data$miRNAName %in% omy_miRNA) %>%
-    dplyr::group_by(miRNAName) %>%
-    dplyr::mutate(normLevel = 100*referenceLevel/sum(referenceLevel)) %>% 
-    dplyr::select(organ, miRNAName, normLevel) %>% 
-    tidyr::pivot_wider(names_from = miRNAName, values_from = normLevel)  
-  
-  mat <- as.matrix(select(data,-organ))
-  rownames(mat) <- data$organ
-  
-  pheatmap::pheatmap(mat)
 }
