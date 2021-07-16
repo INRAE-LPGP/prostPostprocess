@@ -9,7 +9,5 @@ The package depends of DESeq2. DESeq2 can be installed from Bioconductor. Other 
 The package can be installed from the github repository if you have access to it : 
 
 ```
-devtools::install_github(repo = "https://github.com/INRAE-LPGP/prostPostprocess", auth_token = "your_PAT")
+devtools::install_github(repo = "https://github.com/INRAE-LPGP/prostPostprocess")
 ```
-
-To generate a personnal access token (PAT), go to https://github.com/settings/tokens and supply to `auth_token`
