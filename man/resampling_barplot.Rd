@@ -20,6 +20,10 @@ resampling_barplot(
 
 \item{n_resample}{the number of resampling to analyse}
 
+\item{threshold_padj}{maximum adjusted pvalue to be considered differentially expressed (default 0.05)}
+
+\item{threshold_lfc}{minimum log2 fold change to be considered differentially expressed (default 0.58, corresponds to 1.5 fold change)}
+
 \item{title}{}
 }
 \description{

@@ -21,6 +21,10 @@ resampling_heatmap(
 
 \item{subset_size}{number of sample for each condition in a resampling}
 
+\item{threshold_padj}{maximum adjusted pvalue to be considered differentially expressed (default 0.05)}
+
+\item{threshold_lfc}{minimum log2 fold change to be considered differentially expressed (default 0.58, corresponds to 1.5 fold change)}
+
 \item{condition_name}{condition used to facet the heatmap}
 }
 \description{

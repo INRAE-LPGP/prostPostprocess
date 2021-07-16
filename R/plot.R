@@ -266,8 +266,8 @@ boxplot_one_mir <- function(dds, mir,
 #' @param reference_analysis tibble from compute_resampling function
 #' @param resampling_results analysis whit every biosamples
 #' @param n_resample the number of resampling to analyse
-#' @param threshold_padj
-#' @param threshold_lfc
+#' @param threshold_padj maximum adjusted pvalue to be considered differentially expressed (default 0.05)
+#' @param threshold_lfc minimum log2 fold change to be considered differentially expressed (default 0.58, corresponds to 1.5 fold change)
 #' @param title
 #'
 #' @importFrom rlang .data
@@ -312,8 +312,8 @@ resampling_barplot <- function(reference_analysis, resampling_results, n_resampl
 #' @param sample_info sample_info tibble
 #' @param resampling_results analysis whit every biosamples
 #' @param subset_size number of sample for each condition in a resampling
-#' @param threshold_padj
-#' @param threshold_lfc
+#' @param threshold_padj maximum adjusted pvalue to be considered differentially expressed (default 0.05)
+#' @param threshold_lfc minimum log2 fold change to be considered differentially expressed (default 0.58, corresponds to 1.5 fold change)
 #' @param title
 #' @param condition_name condition used to facet the heatmap
 #'
