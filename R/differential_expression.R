@@ -22,6 +22,8 @@ dds_from_compressed_by_annotation <- function(reads,
     dplyr::mutate_all(as.integer) %>%
     as.matrix() %>%
     magrittr::set_rownames(reads$omy_miRNA)
+  colnames(cts) <- stringr::str_remove(colnames(cts), "_cutadapt$")
+  colnames(cts) <- stringr::str_remove(colnames(cts), "_final_trimming$")
   dds <- DESeq2::DESeqDataSetFromMatrix(countData = cts,
                                         colData = coldata,
                                         design = ds_formula)
